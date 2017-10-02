@@ -1,10 +1,9 @@
 package quasar.project
 
-import scala.{Option, Boolean}
-import java.lang.{String, System}
+import scala.Boolean
 import scala.collection.Seq
 
-import sbt._, Keys._
+import sbt._
 
 object Dependencies {
   private val algebraVersion      = "0.7.0"
@@ -100,6 +99,17 @@ object Dependencies {
     )
   }
 
+  def rdbmscore = {
+    Seq(
+      "org.tpolecat" %% "doobie-core"       % doobieVersion,
+      "org.tpolecat" %% "doobie-postgres"   % doobieVersion,
+      "org.tpolecat" %% "doobie-hikari"     % doobieVersion,
+      "org.tpolecat" %% "doobie-h2"         % doobieVersion,
+      ("org.tpolecat" %% "doobie-specs2"     % doobieVersion % Test)
+        .exclude("org.specs2", "specs2-core_2.11") // conflicting version
+    )
+  }
+
   def sparkcore(sparkProvided: Boolean) = Seq(
     ("org.apache.spark" %% "spark-core" % "2.2.0" % (if(sparkProvided) "provided" else "compile"))
       .exclude("aopalliance", "aopalliance")                  // It seems crazy that we need to do this,
@@ -128,9 +138,15 @@ object Dependencies {
     ("com.sksamuel.elastic4s" %% "elastic4s-http"         % "5.4.6")
       .exclude("commons-logging", "commons-logging"),
     "io.verizon.delorean" %% "core" % "1.2.42-scalaz-7.2",
-    "com.sksamuel.elastic4s" %% "elastic4s-jackson"      % "5.4.6",
+    // Please note that elastic4s-jackosn and elastic4s-testkit DON'T contain
+    // dependency to io.netty:netty-all in the elastic4s build.sbt. For the
+    // unknown reasons however netty-all is a deriviative dependency (@daniel suspects
+    // bug in ivy) thus we must exclude netty-all here since it is a conflicting version 4.1.x
+    ("com.sksamuel.elastic4s" %% "elastic4s-jackson"      % "5.4.6")
+      .exclude("io.netty", "netty-all"),
     ("com.sksamuel.elastic4s" %% "elastic4s-testkit"      % "5.4.6" % Test)
-      .exclude("org.scalatest", "scalatest_2.11"),
+      .exclude("org.scalatest", "scalatest_2.11")
+      .exclude("io.netty", "netty-all"),
     "org.apache.logging.log4j"              % "log4j-core"                % "2.6.2"
   )
 

@@ -84,7 +84,7 @@ object SparkHdfs extends SparkCore with ChrootedInterpreter {
   @SuppressWarnings(Array("org.wartremover.warts.Null"))
   def generateHdfsFS(sfsConf: HdfsConfig): Task[HdfsFileSystem] =
     for {
-      _ <- Task.delay(java.lang.Thread.currentThread.setContextClassLoader(null))
+      _ <- Task.delay(java.lang.Thread.currentThread.setContextClassLoader(getClass.getClassLoader))
       fs <- Task.delay {
         val conf = new Configuration()
         conf.setBoolean("fs.hdfs.impl.disable.cache", true)
@@ -408,12 +408,10 @@ object SparkHdfs extends SparkCore with ChrootedInterpreter {
       val delete: Free[Eff, FileSystemError \/ Unit] = for {
         path <- toPath(p)
         hdfs <- hdfsFSOps.ask
-      } yield (if(hdfs.exists(path)) {
-        hdfs.delete(path, true).right[FileSystemError]
-      }
-      else {
-        pathErr(pathNotFound(p)).left[Unit]
-      }).as(())
+      } yield (if (hdfs.exists(path))
+        hdfs.delete(path, true).right[FileSystemError].void
+      else
+        pathErr(pathNotFound(p)).left[Unit])
 
       delete.liftB.unattempt
     }
