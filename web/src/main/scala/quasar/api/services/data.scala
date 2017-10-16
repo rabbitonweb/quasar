@@ -45,7 +45,7 @@ import scalaz.stream.Process
 import scodec.bits.ByteVector
 
 object data {
-  import ManageFile.MoveScenario
+  import ManageFile.PathPair
 
   def service[S[_]](
     implicit
@@ -82,8 +82,20 @@ object data {
         dstStr <- EitherT.fromDisjunction[M.FreeS](
                     requiredHeader(Destination, req) map (_.value))
         dst    <- EitherT.fromDisjunction[M.FreeS](parseDestination(dstStr))
-        scn    <- EitherT.fromDisjunction[M.FreeS](moveScenario(path, dst))
-        _      <- M.move(scn, MoveSemantics.FailIfExists).leftMap(_.toApiError)
+        pair   <- EitherT.fromDisjunction[M.FreeS](pathPair(path, dst, "move"))
+        _      <- EitherT.fromDisjunction[M.FreeS](if (pair.src === pair.dst) sameDst(pair.src).left else ().right)
+        _      <- M.move(pair, MoveSemantics.FailIfExists)
+                    .leftMap(_.toApiError)
+      } yield Created).run)
+
+    case req @ Method.COPY -> AsPath(path) =>
+      respond((for {
+        dstStr <- EitherT.fromDisjunction[M.FreeS](
+                    requiredHeader(Destination, req) map (_.value))
+        dst    <- EitherT.fromDisjunction[M.FreeS](parseDestination(dstStr))
+        pair   <- EitherT.fromDisjunction[M.FreeS](pathPair(path, dst, "copy"))
+        _      <- EitherT.fromDisjunction[M.FreeS](if (pair.src === pair.dst) sameDst(pair.src).left else ().right)
+        _      <- M.copy(pair).leftMap(_.toApiError)
       } yield Created).run)
 
     case DELETE -> AsPath(path) =>
@@ -91,6 +103,11 @@ object data {
   }
 
   ////
+
+  private def sameDst(path: APath) = ApiError.fromMsg(
+    BadRequest withReason "Destination is same path as source",
+    s"Destination is same path as source",
+    "path" := path)
 
   private def download[S[_]](
     format: MessageFormat,
@@ -112,7 +129,7 @@ object data {
         val headers =
           `Content-Type`(MediaType.`application/zip`) ::
             (format.disposition.toList: List[Header])
-        QResponse.headers.modify(_ ++ headers)(QResponse.streaming(p)).η[Free[S, ?]]
+        QResponse.streaming(p).map(QResponse.headers.modify(_ ++ headers))
       },
       filePath => {
         val statusFile: Free[S, (Headers, AFile)] =
@@ -131,12 +148,12 @@ object data {
             _  <- VC.modify(filePath, vc => vc.copy(cacheReads = vc.cacheReads + 1)).liftM[OptionT]
           } yield cr) | ((Headers.empty, filePath))
 
-        statusFile ∘ { case (h, f) =>
+        statusFile flatMap { case (h, f) =>
           val d = R.scan(f, offset, limit)
           zipped.fold(
             formattedZipDataResponse(format, f, d),
             formattedDataResponse(format, d)
-          ).modifyHeaders(_ ++ h)
+          ).map(_.modifyHeaders(_ ++ h))
         }
       })
 
@@ -153,25 +170,24 @@ object data {
     )(dstString)
   }
 
-  private def moveScenario(src: APath, dst: APath): ApiError \/ MoveScenario =
+  private def pathPair(src: APath, dst: APath, operation: String): ApiError \/ PathPair =
     refineType(src).fold(
       srcDir =>
         refineType(dst).swap.bimap(
           df => ApiError.fromMsg(
             BadRequest withReason "Illegal move.",
-            "Cannot move directory into a file",
+            s"Cannot $operation directory into a file",
             "srcPath" := srcDir,
             "dstPath" := df),
-          MoveScenario.dirToDir(srcDir, _)),
+          PathPair.dirToDir(srcDir, _)),
       srcFile =>
         refineType(dst).bimap(
           dd => ApiError.fromMsg(
             BadRequest withReason "Illegal move.",
-            "Cannot move a file into a directory, must specify destination precisely",
+            s"Cannot $operation a file into a directory, must specify destination precisely",
             "srcPath" := srcFile,
             "dstPath" := dd),
-          // TODO: Why not move into directory if dst is a dir?
-          MoveScenario.fileToFile(srcFile, _)))
+          PathPair.fileToFile(srcFile, _)))
 
   // TODO: Streaming
   private def upload[S[_]](

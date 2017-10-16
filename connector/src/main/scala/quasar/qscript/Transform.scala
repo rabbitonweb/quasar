@@ -26,6 +26,7 @@ import quasar.fp._
 import quasar.frontend.{logicalplan => lp}
 import quasar.qscript.MapFuncCore._
 import quasar.qscript.MapFuncsCore._
+import quasar.qscript.analysis.DeepShape
 import quasar.sql.JoinDir
 import quasar.std.StdLib._
 
@@ -57,6 +58,7 @@ class Transform
     PB: ProjectBucket[T, ?] :<: F,
     // TODO: Remove this one once we have multi-sorted AST
     FI: Injectable.Aux[F, QScriptTotal[T, ?]],
+    shape: DeepShape[T, F],
     render: Delay[RenderTree, F],
     mergeable: Mergeable.Aux[T, F],
     eq: Delay[Equal, F],
@@ -478,7 +480,7 @@ class Transform
         if func.effect ≟ Mapping =>
       val AutoJoinResult(base, lval, rval) = autojoin(a1, a2)
       Target(
-        Ann[T](base.buckets, Free.roll(MapFunc.translateBinaryMapping(IC)(func)(lval, rval))),
+        Ann[T](base.buckets, Free.roll(MapFunc.translateBinaryMapping(IC, ID)(func)(lval, rval))),
         base.src).right[PlannerError]
 
     case lp.InvokeUnapply(func @ TernaryFunc(_, _, _, _, _, _, _), Sized(a1, a2, a3))
@@ -622,7 +624,7 @@ class Transform
 
       val reifiedCondition: F[T[F]] =
         QC.inj(reifyResult(func.ann, func.value)).embed
-          .transCata[T[F]](rewrite.normalize).project
+          .transCata[T[F]](rewrite.normalizeTJ).project
 
       reifiedCondition match {
         case QC(Map(_, mf)) if mf.count ≟ 0 =>

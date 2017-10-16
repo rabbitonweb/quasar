@@ -2,15 +2,11 @@ Chain
 ├─ $FoldLeftF
 │  ├─ Chain
 │  │  ├─ $ReadF(db; zips)
-│  │  ├─ $SimpleMapF
-│  │  │  ├─ Map
-│  │  │  │  ╰─ JsCore([_._id, _])
-│  │  │  ╰─ Scope(Map())
 │  │  ├─ $ProjectF
-│  │  │  ├─ Name("0" -> { "$arrayElemAt": ["$$ROOT", { "$literal": NumberInt("1") }] })
+│  │  │  ├─ Name("0" -> { "$arrayElemAt": [["$_id", "$$ROOT"], { "$literal": NumberInt("1") }] })
 │  │  │  ├─ Name("1" -> { "$literal": true })
-│  │  │  ├─ Name("src" -> "$$ROOT")
-│  │  │  ╰─ IgnoreId
+│  │  │  ├─ Name("src" -> ["$_id", "$$ROOT"])
+│  │  │  ╰─ ExcludeId
 │  │  ├─ $MatchF
 │  │  │  ╰─ And
 │  │  │     ├─ Doc
@@ -37,15 +33,11 @@ Chain
 │  │     ╰─ IncludeId
 │  ╰─ Chain
 │     ├─ $ReadF(db; zips2)
-│     ├─ $SimpleMapF
-│     │  ├─ Map
-│     │  │  ╰─ JsCore([_._id, _])
-│     │  ╰─ Scope(Map())
 │     ├─ $ProjectF
-│     │  ├─ Name("0" -> { "$arrayElemAt": ["$$ROOT", { "$literal": NumberInt("1") }] })
+│     │  ├─ Name("0" -> { "$arrayElemAt": [["$_id", "$$ROOT"], { "$literal": NumberInt("1") }] })
 │     │  ├─ Name("1" -> { "$literal": true })
-│     │  ├─ Name("src" -> "$$ROOT")
-│     │  ╰─ IgnoreId
+│     │  ├─ Name("src" -> ["$_id", "$$ROOT"])
+│     │  ╰─ ExcludeId
 │     ├─ $MatchF
 │     │  ╰─ And
 │     │     ├─ Doc
@@ -74,5 +66,6 @@ Chain
 ├─ $UnwindF(DocField(BsonField.Name("left")))
 ╰─ $SimpleMapF
    ├─ Map
-   │  ╰─ JsCore(_.right[1].city)
+   │  ╰─ Obj
+   │     ╰─ Key(__quasar_mongodb_sigil: _.right[1].city)
    ╰─ Scope(Map())

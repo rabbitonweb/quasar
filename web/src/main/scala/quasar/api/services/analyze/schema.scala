@@ -93,10 +93,9 @@ object schema {
                            blob, requestVars(req), dir, DefaultSampleSize, settings
                          ).leftMap(_.toApiError)
           schema      <- r.liftT[Free[S, ?]].leftMap(_.toApiError)
-        } yield {
-          formattedDataResponse(
-            MessageFormat.fromAccept(req.headers.get(Accept)),
-            schema.map(analysis.schemaToData(_)).toProcess)
-        })
+          response    <- EitherT.right(formattedDataResponse(
+                           MessageFormat.fromAccept(req.headers.get(Accept)),
+                           schema.map(analysis.schemaToData(_)).toProcess))
+        } yield response)
     }
 }

@@ -2,7 +2,7 @@ Chain
 ├─ $ReadF(db; zips)
 ├─ $LimitF(5)
 ╰─ $ProjectF
-   ├─ Name("value" -> {
+   ├─ Name("__quasar_mongodb_sigil" -> {
    │       "$cond": [
    │         {
    │           "$and": [

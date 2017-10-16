@@ -7,22 +7,26 @@ Chain
 ├─ $ProjectF
 │  ├─ Name("f0" -> "$_id.0")
 │  ╰─ IgnoreId
-├─ $SimpleMapF
-│  ├─ Map
-│  │  ╰─ Let(__val)
-│  │     ├─ JsCore([_._id["0"], _.f0])
-│  │     ╰─ JsCore([__val[1], __val])
-│  ╰─ Scope(Map())
 ├─ $ProjectF
 │  ├─ Name("0" -> {
 │  │       "$arrayElemAt": [
-│  │         { "$arrayElemAt": ["$$ROOT", { "$literal": NumberInt("1") }] },
+│  │         {
+│  │           "$arrayElemAt": [
+│  │             [
+│  │               {
+│  │                 "$arrayElemAt": [["$_id.0", "$f0"], { "$literal": NumberInt("1") }]
+│  │               },
+│  │               ["$_id.0", "$f0"]],
+│  │             { "$literal": NumberInt("1") }]
+│  │         },
 │  │         { "$literal": NumberInt("1") }]
 │  │     })
-│  ├─ Name("src" -> "$$ROOT")
-│  ╰─ IgnoreId
+│  ├─ Name("src" -> [
+│  │       { "$arrayElemAt": [["$_id.0", "$f0"], { "$literal": NumberInt("1") }] },
+│  │       ["$_id.0", "$f0"]])
+│  ╰─ ExcludeId
 ├─ $SortF
 │  ╰─ SortKey(0 -> Ascending)
 ╰─ $ProjectF
-   ├─ Name("value" -> { "$arrayElemAt": ["$src", { "$literal": NumberInt("0") }] })
+   ├─ Name("__quasar_mongodb_sigil" -> { "$arrayElemAt": ["$src", { "$literal": NumberInt("0") }] })
    ╰─ ExcludeId

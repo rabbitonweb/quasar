@@ -14,18 +14,16 @@
  * limitations under the License.
  */
 
-package quasar.mimir
+package quasar.physical.mongodb
 
-trait CondRewriter extends DAG {
-  import instructions._
-  import dag._
+import quasar.fp.ski.ι
 
-  def rewriteConditionals(node: DepGraph): DepGraph = {
-    node mapDown { recurse =>
-      {
-        case peer @ IUI(true, Filter(leftJoin, left, pred1), Filter(rightJoin, right, Operate(Comp, pred2))) if pred1 == pred2 =>
-          Cond(recurse(pred1), recurse(left), leftJoin, recurse(right), rightJoin)(peer.loc)
-      }
-    }
-  }
+import monocle.Prism
+import org.bson.{BsonValue, BsonDocument}
+
+object bsonvalue {
+  val document: Prism[BsonValue, BsonDocument] =
+    Prism.partial[BsonValue, BsonDocument] {
+      case doc: BsonDocument => doc
+    } (ι)
 }

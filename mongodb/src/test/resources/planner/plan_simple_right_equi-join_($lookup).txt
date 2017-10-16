@@ -2,15 +2,11 @@ Chain
 ├─ $FoldLeftF
 │  ├─ Chain
 │  │  ├─ $ReadF(db; foo)
-│  │  ├─ $SimpleMapF
-│  │  │  ├─ Map
-│  │  │  │  ╰─ JsCore([_._id, _])
-│  │  │  ╰─ Scope(Map())
 │  │  ├─ $ProjectF
-│  │  │  ├─ Name("0" -> { "$arrayElemAt": ["$$ROOT", { "$literal": NumberInt("1") }] })
+│  │  │  ├─ Name("0" -> { "$arrayElemAt": [["$_id", "$$ROOT"], { "$literal": NumberInt("1") }] })
 │  │  │  ├─ Name("1" -> { "$literal": true })
-│  │  │  ├─ Name("src" -> "$$ROOT")
-│  │  │  ╰─ IgnoreId
+│  │  │  ├─ Name("src" -> ["$_id", "$$ROOT"])
+│  │  │  ╰─ ExcludeId
 │  │  ├─ $MatchF
 │  │  │  ╰─ And
 │  │  │     ├─ Doc
@@ -37,15 +33,11 @@ Chain
 │  │     ╰─ IncludeId
 │  ╰─ Chain
 │     ├─ $ReadF(db; bar)
-│     ├─ $SimpleMapF
-│     │  ├─ Map
-│     │  │  ╰─ JsCore([_._id, _])
-│     │  ╰─ Scope(Map())
 │     ├─ $ProjectF
-│     │  ├─ Name("0" -> { "$arrayElemAt": ["$$ROOT", { "$literal": NumberInt("1") }] })
+│     │  ├─ Name("0" -> { "$arrayElemAt": [["$_id", "$$ROOT"], { "$literal": NumberInt("1") }] })
 │     │  ├─ Name("1" -> { "$literal": true })
-│     │  ├─ Name("src" -> "$$ROOT")
-│     │  ╰─ IgnoreId
+│     │  ├─ Name("src" -> ["$_id", "$$ROOT"])
+│     │  ╰─ ExcludeId
 │     ├─ $MatchF
 │     │  ╰─ And
 │     │     ├─ Doc
@@ -79,7 +71,7 @@ Chain
 │  │         "$left"]
 │  │     })
 │  ├─ Name("right" -> "$right")
-│  ╰─ IgnoreId
+│  ╰─ ExcludeId
 ├─ $UnwindF(DocField(BsonField.Name("right")))
 ├─ $UnwindF(DocField(BsonField.Name("left")))
 ├─ $SimpleMapF
@@ -91,4 +83,4 @@ Chain
 ╰─ $ProjectF
    ├─ Name("name" -> true)
    ├─ Name("address" -> true)
-   ╰─ IgnoreId
+   ╰─ ExcludeId

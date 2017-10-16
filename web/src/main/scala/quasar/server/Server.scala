@@ -22,7 +22,6 @@ import quasar.api.{redirectService, staticFileService, ResponseOr, ResponseT}
 import quasar.cli.Cmd
 import quasar.config._
 import quasar.console.{logErrors, stdout}
-import quasar.contrib.pathy.ADir
 import quasar.contrib.scalaz._
 import quasar.contrib.scopt._
 import quasar.db.DbConnectionConfig
@@ -63,7 +62,8 @@ object Server {
       val loadConfigM: Task[BackendConfig] = opts.loadConfig.fold(
         { plugins =>
           val err = Task.fail(new RuntimeException("plugin directory does not exist (or is a file)"))
-          ADir.fromFile(plugins).getOrElseF(err).map(BackendConfig.JarDirectory(_))
+          val check = Task.delay(plugins.exists() && !plugins.isFile())
+          check.ifM(Task.now(BackendConfig.JarDirectory(plugins)), err)
         },
         backends => BackendConfig.fromBackends(IList.fromList(backends)))
 
@@ -96,6 +96,9 @@ object Server {
 
   }
 
+  def webInter[S[_]](eval: S ~> QErrs_TaskM): S ~> ResponseOr =
+    foldMapNT(liftMT[Task, ResponseT] :+: qErrsToResponseT[Task]) compose eval
+
   def serviceStarter(
     defaultPort: Int,
     staticContent: List[StaticContent],
@@ -105,13 +108,9 @@ object Server {
   ): PortChangingServer.ServiceStarter = {
     import RestApi._
 
-    val f: QErrs_Task ~> ResponseOr =
-      liftMT[Task, ResponseT] :+:
-        qErrsToResponseOr
-
     (reload: Int => Task[String \/ Unit]) =>
       finalizeServices(
-        toHttpServices(liftMT[Task, ResponseT] :+: (foldMapNT(f) compose eval), coreServices[CoreEffIO]) ++
+        toHttpServices(liftMT[Task, ResponseT] :+: webInter(eval), coreServices[CoreEffIO]) ++
         additionalServices
       ) orElse nonApiService(defaultPort, Kleisli(persistPortChange andThen (a => a.run)) >> Kleisli(reload), staticContent, redirect)
   }

@@ -17,21 +17,27 @@
 package quasar.api.services
 
 import slamdata.Predef._
-import quasar.contrib.pathy.APath
+import quasar.api.ResponseOr
+import quasar.contrib.pathy._
 import quasar.effect._
 import quasar.fp._
 import quasar.fp.free._
+import quasar.fs._
+import quasar.fs.InMemory.InMemState
 import quasar.fs.mount._
+import quasar.metastore.{MetaStore, MetaStoreFixture}
 import quasar.api.JsonFormat.{SingleArray, LineDelimited}
 import quasar.api.JsonPrecision.{Precise, Readable}
 import quasar.api.MessageFormat.JsonContentType
+import quasar.main._
+import quasar.server.Server
 
 import argonaut.{Json, Argonaut}
 import Argonaut._
 import org.http4s.{MediaType, Charset, EntityEncoder}
 import org.http4s.headers.`Content-Type`
 import org.scalacheck.Arbitrary
-import scalaz._
+import scalaz.{Failure => _, _}, Scalaz._
 import scalaz.concurrent.Task
 
 object Fixture {
@@ -93,4 +99,36 @@ object Fixture {
       foldMapNT(meff) compose mounter
     }
   }
+
+  def inMemFS(
+    state: InMemState = InMemState.empty,
+    mounts: MountingsConfig = MountingsConfig.empty
+  ): Task[FS] = {
+    val noShutdown: Task[Unit] = Task.now(())
+    (InMemory.runBackend(state) |@| mountingInter(mounts.toMap))((fs, mount) =>
+      FS(
+        fs andThen injectFT[Task, QErrs_Task],
+        mount andThen injectFT[Task, QErrs_Task],
+        noShutdown))
+  }
+
+  def inMemFSEval(
+    state: InMemState = InMemState.empty,
+    mounts: MountingsConfig = MountingsConfig.empty,
+    metaRefT: Task[TaskRef[MetaStore]] = MetaStoreFixture.createNewTestMetastore().flatMap(TaskRef(_)),
+    persist: quasar.db.DbConnectionConfig => MainTask[Unit] = _ => ().point[MainTask]
+  ): Task[CoreEffIO ~> QErrs_TaskM] =
+    for {
+      metaRef <- metaRefT
+      fsThing <- inMemFS(state, mounts)
+      eval    <- CoreEff.defaultImpl(fsThing, metaRef, persist)
+    } yield injectFT[Task, QErrs_Task] :+: eval
+
+  def inMemFSWeb(
+    state: InMemState = InMemState.empty,
+    mounts: MountingsConfig = MountingsConfig.empty,
+    metaRefT: Task[TaskRef[MetaStore]] = MetaStoreFixture.createNewTestMetastore().flatMap(TaskRef(_)),
+    persist: quasar.db.DbConnectionConfig => MainTask[Unit] = _ => ().point[MainTask]
+  ): Task[CoreEffIO ~> ResponseOr] =
+    inMemFSEval(state, mounts, metaRefT, persist).map(Server.webInter)
 }

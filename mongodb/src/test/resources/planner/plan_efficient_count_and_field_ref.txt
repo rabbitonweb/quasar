@@ -2,15 +2,24 @@ Chain
 ├─ $FoldLeftF
 │  ├─ Chain
 │  │  ├─ $ReadF(db; zips)
-│  │  ├─ $SimpleMapF
-│  │  │  ├─ Map
-│  │  │  │  ╰─ Let(__val)
-│  │  │  │     ├─ JsCore([_._id, _])
-│  │  │  │     ╰─ JsCore([__val[0], __val[1]])
-│  │  │  ╰─ Scope(Map())
 │  │  ├─ $GroupF
 │  │  │  ├─ Grouped
-│  │  │  │  ╰─ Name("0" -> { "$push": "$$ROOT" })
+│  │  │  │  ╰─ Name("0" -> {
+│  │  │  │          "$push": {
+│  │  │  │            "$let": {
+│  │  │  │              "vars": {
+│  │  │  │                "a": [
+│  │  │  │                  {
+│  │  │  │                    "$arrayElemAt": [["$_id", "$$ROOT"], { "$literal": NumberInt("0") }]
+│  │  │  │                  },
+│  │  │  │                  {
+│  │  │  │                    "$arrayElemAt": [["$_id", "$$ROOT"], { "$literal": NumberInt("1") }]
+│  │  │  │                  }]
+│  │  │  │              },
+│  │  │  │              "in": "$$a"
+│  │  │  │            }
+│  │  │  │          }
+│  │  │  │        })
 │  │  │  ╰─ By({ "$literal": null })
 │  │  ╰─ $ProjectF
 │  │     ├─ Name("_id" -> "$_id")
@@ -21,12 +30,6 @@ Chain
 │  │     ╰─ IncludeId
 │  ╰─ Chain
 │     ├─ $ReadF(db; zips)
-│     ├─ $SimpleMapF
-│     │  ├─ Map
-│     │  │  ╰─ Let(__val)
-│     │  │     ├─ JsCore([_._id, _])
-│     │  │     ╰─ JsCore([__val[0], __val[1]])
-│     │  ╰─ Scope(Map())
 │     ├─ $GroupF
 │     │  ├─ Grouped
 │     │  │  ╰─ Name("f0" -> { "$sum": { "$literal": NumberInt("1") } })
@@ -53,22 +56,13 @@ Chain
 ├─ $UnwindF(DocField(BsonField.Name("left")))
 ├─ $SimpleMapF
 │  ├─ Map
-│  │  ╰─ JsCore([_.left, _.right])
-│  ╰─ Scope(Map())
-├─ $ProjectF
-│  ├─ Name("0" -> { "$literal": true })
-│  ├─ Name("src" -> "$$ROOT")
-│  ╰─ IgnoreId
-├─ $MatchF
-│  ╰─ Doc
-│     ╰─ Expr($0 -> Eq(Bool(true)))
-├─ $SimpleMapF
-│  ├─ Map
-│  │  ╰─ Arr
-│  │     ├─ Obj
-│  │     │  ├─ Key(city: (isObject(_.src[0][1]) && (! Array.isArray(_.src[0][1]))) ? _.src[0][1].city : undefined)
-│  │     │  ╰─ Key(cnt: _.src[1])
-│  │     ╰─ JsCore(_.src)
+│  │  ╰─ Let(__val)
+│  │     ├─ JsCore([_.left, _.right])
+│  │     ╰─ Arr
+│  │        ├─ Obj
+│  │        │  ├─ Key(city: (isObject(__val[0][1]) && (! Array.isArray(__val[0][1]))) ? __val[0][1].city : undefined)
+│  │        │  ╰─ Key(cnt: __val[1])
+│  │        ╰─ Ident(__val)
 │  ╰─ Scope(Map())
 ├─ $ProjectF
 │  ├─ Name("0" -> {
@@ -77,9 +71,9 @@ Chain
 │  │         { "$literal": NumberInt("1") }]
 │  │     })
 │  ├─ Name("src" -> "$$ROOT")
-│  ╰─ IgnoreId
+│  ╰─ ExcludeId
 ├─ $SortF
 │  ╰─ SortKey(0 -> Descending)
 ╰─ $ProjectF
-   ├─ Name("value" -> { "$arrayElemAt": ["$src", { "$literal": NumberInt("0") }] })
+   ├─ Name("__quasar_mongodb_sigil" -> { "$arrayElemAt": ["$src", { "$literal": NumberInt("0") }] })
    ╰─ ExcludeId

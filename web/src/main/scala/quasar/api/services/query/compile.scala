@@ -39,6 +39,7 @@ object compile {
     implicit
     Q: QueryFile.Ops[S],
     M: ManageFile.Ops[S],
+    C: Catchable[Free[S, ?]],
     S0: Mounting :<: S,
     S1: FileSystemFailure :<: S
   ): QHttpService[S] = {

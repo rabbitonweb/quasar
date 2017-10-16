@@ -142,6 +142,9 @@ object InMemory {
       case Move(scenario, semantics) =>
         scenario.fold(moveDir(_, _, semantics), moveFile(_, _, semantics))
 
+      case Copy(pair) =>
+        pair.fold(copyDir, copyFile)
+
       case Delete(path) =>
         refineType(path).fold(deleteDir, deleteFile)
 
@@ -245,6 +248,9 @@ object InMemory {
   val fileSystem: FileSystem ~> InMemoryFs =
     interpretFileSystem(queryFile, readFile, writeFile, manageFile)
 
+  val fileSystem0: BackendEffect ~> InMemoryFs =
+    interpretBackendEffect(Empty.analyze[InMemoryFs], queryFile, readFile, writeFile, manageFile)
+
   def runStatefully(initial: InMemState): Task[InMemoryFs ~> Task] =
     runInspect(initial).map(_._1)
 
@@ -260,6 +266,9 @@ object InMemory {
 
   def runFs(initial: InMemState): Task[FileSystem ~> Task] =
     runStatefully(initial).map(_ compose fileSystem)
+
+  def runBackend(initial: InMemState): Task[BackendEffect ~> Task] =
+    runStatefully(initial).map(_ compose fileSystem0)
 
   ////
 
@@ -345,6 +354,19 @@ object InMemory {
         fileL(dst).st flatMap (_ ? move0 | fsPathNotFound(dst))
     }
   }
+
+  private def copyDir(src: ADir, dst: ADir):
+      InMemoryFs[FileSystemError \/ Unit] =
+    for {
+      files <- contentsL.st ∘
+        (_.keys.toStream.map(_ relativeTo src).unite ∘
+          (sufx => (src </> sufx, dst </> sufx)))
+      r     <- files.traverse { case (sf, df) => EitherT(copyFile(sf, df)) }.run ∘
+        (_ >>= (_.nonEmpty either (()) or pathErr(pathNotFound(src))))
+    } yield r
+
+  private def copyFile(src: AFile, dst: AFile): InMemoryFs[FileSystemError \/ Unit] =
+    fileL(src) >>- (_.cata(xs => (fileL(dst) := Some(xs)) as ().right, fsPathNotFound(src)))
 
   private def deleteDir(d: ADir): InMemoryFs[FileSystemError \/ Unit] =
     for {

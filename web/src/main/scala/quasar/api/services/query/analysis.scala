@@ -40,6 +40,7 @@ object analysis {
 
   def service[S[_]](implicit
       A: Analyze.Ops[S],
+      C: Catchable[Free[S, ?]],
       S0: Mounting :<: S,
       S1: FileSystemFailure :<: S
   ): QHttpService[S] = {

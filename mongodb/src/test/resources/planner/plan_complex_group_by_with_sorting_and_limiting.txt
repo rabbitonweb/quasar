@@ -1,28 +1,22 @@
 Chain
 ├─ $ReadF(db; zips)
-├─ $SimpleMapF
-│  ├─ Map
-│  │  ╰─ Obj
-│  │     ├─ Key(0: [_.city])
-│  │     ╰─ Key(content: _)
-│  ╰─ Scope(Map())
 ├─ $GroupF
 │  ├─ Grouped
-│  │  ├─ Name("f0" -> { "$first": "$content.city" })
+│  │  ├─ Name("f0" -> { "$first": "$city" })
 │  │  ╰─ Name("f1" -> {
 │  │          "$sum": {
 │  │            "$cond": [
 │  │              {
 │  │                "$and": [
-│  │                  { "$lt": [{ "$literal": null }, "$content.pop"] },
-│  │                  { "$lt": ["$content.pop", { "$literal": "" }] }]
+│  │                  { "$lt": [{ "$literal": null }, "$pop"] },
+│  │                  { "$lt": ["$pop", { "$literal": "" }] }]
 │  │              },
-│  │              "$content.pop",
+│  │              "$pop",
 │  │              { "$literal": undefined }]
 │  │          }
 │  │        })
 │  ╰─ By
-│     ╰─ Name("0" -> "$0")
+│     ╰─ Name("0" -> ["$city"])
 ├─ $SimpleMapF
 │  ├─ Map
 │  │  ╰─ Let(__val)
@@ -41,9 +35,9 @@ Chain
 │  │         { "$literal": NumberInt("2") }]
 │  │     })
 │  ├─ Name("src" -> "$$ROOT")
-│  ╰─ IgnoreId
+│  ╰─ ExcludeId
 ├─ $SortF
 │  ╰─ SortKey(0 -> Ascending)
 ╰─ $ProjectF
-   ├─ Name("value" -> { "$arrayElemAt": ["$src", { "$literal": NumberInt("0") }] })
+   ├─ Name("__quasar_mongodb_sigil" -> { "$arrayElemAt": ["$src", { "$literal": NumberInt("0") }] })
    ╰─ ExcludeId

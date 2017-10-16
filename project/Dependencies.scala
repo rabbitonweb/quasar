@@ -18,7 +18,7 @@ object Dependencies {
   private val raptureVersion      = "2.0.0-M9"
   private val refinedVersion      = "0.8.3"
   private val scodecBitsVersion   = "1.1.2"
-  private val http4sVersion       = "0.16.0a"
+  private val http4sVersion       = "0.16.5a"
   private val scalacheckVersion   = "1.13.4"
   private val scalazVersion       = "7.2.15"
   private val scalazStreamVersion = "0.8.6a"
@@ -119,7 +119,8 @@ object Dependencies {
       .exclude("commons-logging", "commons-logging")          // create an assembly jar without conflicts
       .exclude("commons-logging", "commons-logging")          // It would seem though that things work without them...
       .exclude("com.esotericsoftware.minlog", "minlog")       // It's likely this list will need to be updated
-      .exclude("org.spark-project.spark", "unused"),          // anytime the Spark dependency itselft is updated
+      .exclude("org.spark-project.spark", "unused")           // anytime the Spark dependency itselft is updated
+      .excludeAll(ExclusionRule(organization = "io.netty")),
     ("org.apache.spark" %% "spark-sql" % "2.2.0" % (if(sparkProvided) "provided" else "compile"))
       .exclude("aopalliance", "aopalliance")                  // Same limitation
       .exclude("javax.inject", "javax.inject")                // as above for
@@ -128,17 +129,20 @@ object Dependencies {
       .exclude("commons-logging", "commons-logging")          // in near future with
       .exclude("commons-logging", "commons-logging")          // classloaders magic
       .exclude("com.esotericsoftware.minlog", "minlog")       // Keep calm and
-      .exclude("org.spark-project.spark", "unused"),          // ignore Spark.
+      .exclude("org.spark-project.spark", "unused")           // ignore Spark.
+      .excludeAll(ExclusionRule(organization = "io.netty")),
+    "io.netty" % "netty-all" % "4.0.43.Final",    // we need THIS version
     "org.apache.parquet"     % "parquet-format"          % "2.3.1",
     "org.apache.parquet"     % "parquet-hadoop"          % "1.9.0",
-    "com.datastax.spark" %% "spark-cassandra-connector" % "2.0.3",
+    "com.datastax.spark" %% "spark-cassandra-connector" % "2.0.3"
+      excludeAll(ExclusionRule(organization = "io.netty")),
     "org.http4s"             %% "http4s-core"            % http4sVersion,
     "org.http4s"             %% "http4s-blaze-client"    % http4sVersion,
     "org.elasticsearch"      %% "elasticsearch-spark-20" % "5.4.1",
     ("com.sksamuel.elastic4s" %% "elastic4s-http"         % "5.4.6")
       .exclude("commons-logging", "commons-logging"),
     "io.verizon.delorean" %% "core" % "1.2.42-scalaz-7.2",
-    // Please note that elastic4s-jackosn and elastic4s-testkit DON'T contain
+    // Please note that elastic4s-jackson and elastic4s-testkit DON'T contain
     // dependency to io.netty:netty-all in the elastic4s build.sbt. For the
     // unknown reasons however netty-all is a deriviative dependency (@daniel suspects
     // bug in ivy) thus we must exclude netty-all here since it is a conflicting version 4.1.x

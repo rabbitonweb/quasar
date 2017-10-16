@@ -17,33 +17,34 @@
 package quasar.api
 
 import slamdata.Predef.PartialFunction
+import quasar.fp._
 import quasar.fp.free
 import quasar.fp.ski._
 import org.http4s.{Request, Status, HttpService}
 import scalaz._
 
-final case class QHttpService[S[_]](f: PartialFunction[Request, Free[S, QResponse[S]]]) {
+final case class QHttpService[S[_]] private (val f: PartialFunction[Request, Free[S, QResponse[S]]]) {
   def apply(req: Request): Free[S, QResponse[S]] =
     f.applyOrElse(req, κ(Free.pure(QResponse.empty[S].withStatus(Status.NotFound))))
 
   def flatMapS[T[_]](g: S ~> Free[T, ?]): QHttpService[T] =
-    QHttpService(f.andThen(_.map(_.flatMapS(g)).flatMapSuspension(g)))
+    new QHttpService(f.andThen(_.map(_.flatMapS(g)).flatMapSuspension(g)))
 
   def mapS[T[_]](g: S ~> T): QHttpService[T] =
-    QHttpService(f.andThen(_.map(_.mapS(g)).mapSuspension(g)))
+    new QHttpService(f.andThen(_.map(_.mapS(g)).mapSuspension(g)))
 
   def translate[T[_]](g: Free[S, ?] ~> Free[T, ?]): QHttpService[T] =
-    QHttpService(f.andThen(resp => g(resp).map(_.translate(g))))
+    new QHttpService(f.andThen(resp => g(resp).map(_.translate(g))))
 
   def orElse(other: QHttpService[S]): QHttpService[S] =
-    QHttpService(f orElse other.f)
+    new QHttpService(f orElse other.f)
 
   def toHttpService(i: S ~> ResponseOr): HttpService =
     toHttpServiceF(free.foldMapNT(i))
 
   def toHttpServiceF(i: Free[S, ?] ~> ResponseOr): HttpService = {
     def mkResponse(prg: Free[S, QResponse[S]]) =
-      i(prg).flatMap(r => EitherT.right(r.toHttpResponseF(i))).merge
+      i(prg).map(_.toHttpResponseF(i)).merge
 
     HttpService(f andThen mkResponse)
   }
