@@ -23,8 +23,8 @@ import quasar.fs.ReadFile.ReadHandle
 import quasar.fs.WriteFile.WriteHandle
 import quasar.fs.impl.DataStream
 import quasar.physical.rdbms.common.TablePath
-import doobie.imports.{ConnectionIO, Transactor}
 
+import doobie.imports.{ConnectionIO, Transactor}
 import scalaz.Free
 import scalaz.concurrent.Task
 import scalaz.stream.Process
@@ -51,4 +51,3 @@ package object model {
 
   type M[A] = Free[Eff, A]
 }
-
