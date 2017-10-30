@@ -16,6 +16,7 @@
 
 package quasar.physical.rdbms
 
+import quasar.contrib.pathy.AFile
 import quasar.effect.uuid.GenUUID
 import quasar.effect.{KeyValueStore, MonotonicSeq, Read}
 import quasar.fp.{:/:, :\:}
@@ -23,9 +24,10 @@ import quasar.fs.ReadFile.ReadHandle
 import quasar.fs.WriteFile.WriteHandle
 import quasar.fs.impl.DataStream
 import quasar.physical.rdbms.common.TablePath
+import quasar.qscript.{EquiJoin, QScriptCore, ShiftedRead}
 
 import doobie.imports.{ConnectionIO, Transactor}
-import scalaz.Free
+import scalaz.{Const, Free}
 import scalaz.concurrent.Task
 import scalaz.stream.Process
 
@@ -48,6 +50,9 @@ package object model {
       :\: KeyValueStore[ReadHandle, DbDataStream, ?]
       :/: KeyValueStore[WriteHandle, TablePath, ?]
   )#M[A]
+
+  type QS[T[_[_]]] = QScriptCore[T, ?] :\: EquiJoin[T, ?] :/: Const[ShiftedRead[AFile], ?]
+
 
   type M[A] = Free[Eff, A]
 }
