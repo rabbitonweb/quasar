@@ -1,5 +1,5 @@
 {
-    "name": "filter on contains",
+    "name": "[qa_s09] filter on contains",
     "backends": {
         "mimir":"ignoreFieldOrder"
     },

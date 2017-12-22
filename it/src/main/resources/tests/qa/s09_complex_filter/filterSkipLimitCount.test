@@ -1,5 +1,5 @@
 {
-    "name": "filter, skip, limit, and count",
+    "name": "[qa_s09] filter, skip, limit, and count",
     "backends": {
         "couchbase":         "pending"
     },

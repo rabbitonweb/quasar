@@ -1,5 +1,5 @@
 {
-  "name": "filter with negated regex selector",
+  "name": "[qa_s09] filter with negated regex selector",
 
   "backends": {
         "mimir":"ignoreFieldOrder"

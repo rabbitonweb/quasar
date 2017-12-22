@@ -1,5 +1,5 @@
 {
-    "name": "filter, sort, and limit",
+    "name": "[qa_s09] filter, sort, and limit",
 
     "backends": {
         "mongodb_2_6":       "ignoreResultOrder",
