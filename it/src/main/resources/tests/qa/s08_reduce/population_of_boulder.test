@@ -1,5 +1,5 @@
 {
-    "name": "population of Boulder",
+    "name": "[qa_s08] population of Boulder",
     "data": "zips.data",
     "query": "select sum(pop) as Population from zips where city=\"BOULDER\" and state=\"CO\"",
     "predicate": "exactly",

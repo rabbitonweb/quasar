@@ -1,5 +1,5 @@
 {
-    "name": "cities with largest individual zip codes",
+    "name": "[qa_s08] cities with largest individual zip codes",
     "backends": {
         "couchbase": "pending"
     },
