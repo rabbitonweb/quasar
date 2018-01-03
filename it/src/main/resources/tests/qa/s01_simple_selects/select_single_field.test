@@ -1,9 +1,9 @@
 {
   "name": "[qa_s01] select single field",
 
-  "data": "basic.data",
+  "data": "../basic.data",
 
-  "query": "select num from basic",
+  "query": "select num from `../basic`",
 
   "predicate": "exactly",
   "ignoreResultOrder": true,

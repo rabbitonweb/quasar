@@ -18,9 +18,9 @@
 
   "NB": "fix thix, it is postgres that needs to be skipped, expected changes and other connectors unskipped",
 
-  "data": "basic.data",
+  "data": "../basic.data",
 
-  "query": "select name from basic",
+  "query": "select name from `../basic`",
 
   "predicate": "exactly",
   "ignoreResultOrder": true,
