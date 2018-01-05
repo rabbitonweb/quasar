@@ -7,9 +7,9 @@
         "mongodb_read_only": "ignoreResultOrder"
     },
 
-    "data": "zips.data",
+    "data": "../zips.data",
 
-    "query": "select * from zips where city like \"BOU%\" order by pop limit 10",
+    "query": "select * from `../zips` where city like \"BOU%\" order by pop limit 10",
 
     "predicate": "exactly",
     "ignoredFields": ["_id"],

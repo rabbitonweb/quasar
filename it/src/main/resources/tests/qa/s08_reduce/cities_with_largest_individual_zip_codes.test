@@ -4,9 +4,9 @@
         "couchbase": "pending"
     },
 
-    "data": "zips.data",
+    "data": "../zips.data",
 
-    "query": "select distinct city from zips order by pop desc limit 5",
+    "query": "select distinct city from `../zips` order by pop desc limit 5",
 
     "predicate": "exactly",
 

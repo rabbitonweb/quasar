@@ -5,8 +5,8 @@
         "marklogic_json": "pendingIgnoreFieldOrder",
         "mimir":"ignoreFieldOrder"
     },
-    "data": "zips.data",
-    "query": "select `_id`, city from zips where city ~ \"IN$\" or pop ~ \"IN$\"",
+    "data": "../zips.data",
+    "query": "select `_id`, city from `../zips` where city ~ \"IN$\" or pop ~ \"IN$\"",
     "predicate": "atLeast",
     "ignoreResultOrder": true,
     "expected": [
