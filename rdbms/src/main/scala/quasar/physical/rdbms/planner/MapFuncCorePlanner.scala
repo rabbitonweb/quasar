@@ -1,5 +1,5 @@
 /*
- * Copyright 2014–2017 SlamData Inc.
+ * Copyright 2014–2018 SlamData Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@ import quasar.Data
 import quasar.DataCodec
 import DataCodec.Precise.{DateKey, IntervalKey, TimeKey, TimestampKey}
 import quasar.Planner._
-import quasar.physical.rdbms.planner.sql.{StrLower, StrUpper, Substring, Search, StrSplit, ArrayConcat, SqlExpr => SQL}
+import quasar.physical.rdbms.planner.sql.{Contains, StrLower, StrUpper, Substring, Search, StrSplit, ArrayConcat, SqlExpr => SQL}
 import quasar.physical.rdbms.planner.sql.SqlExpr._
 import quasar.physical.rdbms.planner.sql.SqlExpr.Case._
 import quasar.qscript.{MapFuncsCore => MFC, _}
@@ -33,6 +33,7 @@ import quasar.physical.rdbms.model.{BoolCol, DecCol, IntCol, StringCol}
 
 import scalaz._
 import Scalaz._
+import quasar.physical.rdbms.planner.sql.Indirections._
 
 
 class MapFuncCorePlanner[T[_[_]]: BirecursiveT: ShowT, F[_]:Applicative:PlannerErrorME]
@@ -42,10 +43,11 @@ class MapFuncCorePlanner[T[_[_]]: BirecursiveT: ShowT, F[_]:Applicative:PlannerE
 
   def str(s: String): T[SQL] = SQL.Constant[T[SQL]](Data.Str(s)).embed
 
+  // TODO consider reusing "project()"
   def toKeyValue(expr: T[SQL], key: String): T[SQL] = {
     val nr: Refs[T[SQL]] = expr.project match {
-      case Refs(elems) => Refs(elems :+ str(key))
-      case _ => Refs(Vector(expr, str(key)))
+      case Refs(elems, m) => Refs(elems :+ str(key), m)
+      case _ => Refs(Vector(expr, str(key)), deriveIndirection(expr))
     }
     nr.embed
   }
@@ -63,7 +65,10 @@ class MapFuncCorePlanner[T[_[_]]: BirecursiveT: ShowT, F[_]:Applicative:PlannerE
     ).embed
   }
 
-
+  private def project(fSrc: T[SQL], fKey: T[SQL]) = fSrc.project match {
+    case SQL.Refs(list, m) => SQL.Refs(list :+ fKey, m).embed.η[F]
+    case _ => SQL.Refs(Vector(fSrc, fKey), deriveIndirection(fSrc)).embed.η[F] // _12
+  }
 
   def plan: AlgebraM[F, MapFuncCore[T, ?], T[SQL]] = {
     case MFC.Constant(ejson) => SQL.Constant[T[SQL]](ejson.cata(Data.fromEJson)).embed.η[F]
@@ -79,7 +84,6 @@ class MapFuncCorePlanner[T[_[_]]: BirecursiveT: ShowT, F[_]:Applicative:PlannerE
       )(
         Else(SQL.Null[T[SQL]].embed)
       ).embed.η[F]
-
     case MFC.StartOfDay(f) =>  notImplemented("StartOfDay", this)
     case MFC.TemporalTrunc(p, f) =>  notImplemented("TemporalTrunc", this)
     case MFC.TimeOfDay(f) =>  notImplemented("TimeOfDay", this)
@@ -117,12 +121,12 @@ class MapFuncCorePlanner[T[_[_]]: BirecursiveT: ShowT, F[_]:Applicative:PlannerE
     case MFC.Lte(f1, f2) => SQL.Lte[T[SQL]](f1, f2).embed.η[F]
     case MFC.Gt(f1, f2) =>  SQL.Gt[T[SQL]](f1, f2).embed.η[F]
     case MFC.Gte(f1, f2) => SQL.Gte[T[SQL]](f1, f2).embed.η[F]
-    case MFC.IfUndefined(f1, f2) => notImplemented("IfUndefined", this)
+    case MFC.IfUndefined(f1, f2) => SQL.IfNull.build(f1, f2).embed.η[F]
     case MFC.And(f1, f2) =>  SQL.And[T[SQL]](f1, f2).embed.η[F]
     case MFC.Or(f1, f2) =>  SQL.Or[T[SQL]](f1, f2).embed.η[F]
     case MFC.Between(f1, f2, f3) =>  notImplemented("Between", this)
     case MFC.Cond(fCond, fThen, fElse) =>  notImplemented("Cond", this)
-    case MFC.Within(f1, f2) =>  notImplemented("Within", this)
+    case MFC.Within(f1, f2) =>  SQL.BinaryFunction(Contains, f1, f2).embed.η[F]
     case MFC.Lower(f) =>  SQL.UnaryFunction(StrLower, f).embed.η[F]
     case MFC.Upper(f) =>  SQL.UnaryFunction(StrUpper, f).embed.η[F]
     case MFC.Bool(f) =>  SQL.Coercion(BoolCol, f).embed.η[F]
@@ -148,13 +152,31 @@ class MapFuncCorePlanner[T[_[_]]: BirecursiveT: ShowT, F[_]:Applicative:PlannerE
                 notImplemented(s"MakeMap with key = $other", this)
             }
     case MFC.ConcatArrays(f1, f2) =>  SQL.BinaryFunction(ArrayConcat, f1, f2).embed.η[F]
-    case MFC.ConcatMaps(f1, f2) => ExprPair[T[SQL]](f1, f2).embed.η[F]
-    case MFC.ProjectIndex(f1, f2) =>  notImplemented("ProjectIndex", this)
-    case MFC.ProjectKey(fSrc, fKey) =>
-      fSrc.project match {
-        case SQL.Refs(list) => SQL.Refs(list :+ fKey).embed.η[F]
-        case _ => SQL.Refs(Vector(fSrc, fKey)).embed.η[F]
+    case MFC.ConcatMaps(f1, f2) =>
+      (f1.project, f2.project) match {
+        case (ExprWithAlias(e1, a1), ExprWithAlias(e2, a2)) =>
+
+          val patmat: PartialFunction[String, (IndirectionType, Indirection)] = {
+            case `a1` => (Field, deriveIndirection(e1))
+            case `a2` => (Field, deriveIndirection(e2))
+          }
+
+          val meta = Branch(patmat.orElse {
+            s => Default match {
+              case Branch(m, _) => {
+                m(s)
+              }
+            }
+          }, s"$a1 -> (Dot, ${deriveIndirection(e1).shows}), $a2 -> (Dot, ${deriveIndirection(e2).shows})")
+
+          ExprPair[T[SQL]](f1, f2, meta).embed.η[F]
+
+        case (o1, o2) =>
+          ExprPair[T[SQL]](f1, f2, Default).embed.η[F]
       }
+
+    case MFC.ProjectIndex(fSrc, fKey) => project(fSrc, fKey)
+    case MFC.ProjectKey(fSrc, fKey) => project(fSrc, fKey)
     case MFC.DeleteKey(fSrc, fField) =>   notImplemented("DeleteKey", this)
     case MFC.Range(fFrom, fTo) =>  notImplemented("Range", this)
     case MFC.Guard(f1, fPattern, f2, ff3) => f2.η[F]
